@@ -1,0 +1,2098 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>URUGM — Digital Sound Module</title>
+<style>
+  :root{
+    --metal-1:#b7bbbf;
+    --metal-2:#93979d;
+    --metal-3:#797d84;
+    --panel:#a5a9ae;
+    --shadow-light:#c9cdd1;
+    --shadow-dark:#6c6f75;
+    --ink:#1c1e22;
+    --ink-soft:#33363b;
+    --screen-bg:#141516;
+    --screen-text:#f4f5f6;
+    --screen-text-dim:#b7bbbe;
+    --key-white:#f3f4f5;
+    --key-black:#232427;
+    --red-led:#e05a4e;
+    --green-led:#5adf6f;
+    --yellow-led:#f0c93f;
+  }
+
+  *{ box-sizing:border-box; }
+
+  html{
+    height:100%;
+    overflow:hidden;
+    /* Tamaño base fluido: combina ancho y alto de pantalla para que TODO el
+       panel (medido en rem a partir de acá) escale como un conjunto y quepa
+       siempre completo, sin scroll, en cualquier resolución u orientación. */
+    font-size:min(1.55vw, 1.2vh);
+  }
+
+  body{
+    margin:0;
+    padding:0;
+    height:100%;
+    width:100%;
+    overflow:hidden;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:
+      repeating-linear-gradient(115deg, rgba(255,255,255,0.35) 0rem, rgba(255,255,255,0.35) 0.0625rem, transparent 0.0625rem, transparent 0.1875rem),
+      linear-gradient(160deg, var(--metal-1) 0%, var(--metal-2) 45%, var(--metal-3) 100%);
+    font-family:-apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Helvetica, Arial, sans-serif;
+    color:var(--ink);
+    -webkit-user-select:none;
+    user-select:none;
+  }
+
+  .device{
+    width:100%;
+    max-width:58.75rem;
+    margin:0;
+    padding:1.375rem 1.75rem 1.875rem;
+    background:
+      repeating-linear-gradient(90deg, rgba(255,255,255,0.25) 0rem, rgba(255,255,255,0.25) 0.0625rem, transparent 0.0625rem, transparent 0.25rem),
+      linear-gradient(180deg, var(--metal-1), var(--metal-3));
+    border-radius:1.375rem;
+    box-shadow:
+      inset 0 0.0625rem 0 rgba(255,255,255,0.6),
+      inset 0 -0.125rem 0.25rem rgba(0,0,0,0.15),
+      0 1.25rem 2.5rem rgba(0,0,0,0.25);
+    border:1px solid #a2a6ac;
+    position:relative;
+  }
+
+  /* HEADER */
+  .header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:0.25rem 0.375rem 1.125rem;
+    border-bottom:1px solid rgba(0,0,0,0.12);
+    margin-bottom:1.25rem;
+  }
+  .brand{
+    font-size:1.1875rem;
+    font-weight:800;
+    letter-spacing:0.1562rem;
+    color:var(--ink);
+  }
+  .brand span{ color:var(--ink-soft); font-weight:500; letter-spacing:0.0625rem; }
+  .brand svg{ width:14.25rem; height:1.65rem; display:block; }
+  .power-led{
+    width:0.5625rem; height:0.5625rem; border-radius:50%;
+    background:var(--red-led);
+    box-shadow:0 0 0.375rem 0.125rem rgba(224,90,78,0.7), inset 0 0 0.125rem rgba(0,0,0,0.4);
+    margin-right:0.375rem;
+    display:inline-block;
+    transition:background 0.08s ease, box-shadow 0.08s ease;
+  }
+  .power-wrap{ display:flex; align-items:center; font-size:0.6875rem; color:var(--ink-soft); letter-spacing:0.0625rem; }
+
+  /* DISPLAY */
+  .screen-panel{
+    background:linear-gradient(180deg,#c7cace,#dbdee1);
+    border-radius:0.875rem;
+    padding:0.625rem;
+    margin-bottom:0.625rem;
+    box-shadow: inset 0.375rem 0.375rem 0.75rem var(--shadow-dark), inset -0.375rem -0.375rem 0.75rem var(--shadow-light);
+  }
+  .screen{
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.3)),
+      var(--screen-bg);
+    border-radius:0.5625rem;
+    padding:1.125rem 1.375rem;
+    font-family:"SFMono-Regular", "Menlo", "Consolas", monospace;
+    color:var(--screen-text);
+    min-height:10.5rem;
+    box-shadow: inset 0 0 0.75rem rgba(0,0,0,0.85), 0 0 0 0.0625rem #050505;
+    display:flex;
+    flex-direction:column;
+    justify-content:space-between;
+    gap:0.625rem;
+    position:relative;
+    overflow:hidden;
+  }
+  .screen::after{
+    content:"";
+    position:absolute; inset:0;
+    background:repeating-linear-gradient(180deg, rgba(0,0,0,0.14) 0rem, rgba(0,0,0,0.14) 0.0625rem, transparent 0.0625rem, transparent 0.1875rem);
+    pointer-events:none;
+    opacity:0.35;
+  }
+  .screen-row1{
+    font-size:2.375rem;
+    font-weight:800;
+    letter-spacing:0.0312rem;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    color:#00ff00;
+    text-shadow:0 0 0.625rem rgba(0,255,0,0.85), 0 0 0.1875rem rgba(0,255,0,0.9);
+  }
+  .screen-row2{
+    font-size:1.1875rem;
+    font-weight:700;
+    color:var(--screen-text);
+    letter-spacing:0.0312rem;
+    display:flex;
+    flex-wrap:wrap;
+    gap:1.125rem;
+  }
+  .screen-row2 b{ color:var(--screen-text); font-weight:800; }
+  .screen-row3{
+    font-size:1.1875rem;
+    font-weight:700;
+    color:var(--screen-text);
+    letter-spacing:0.0312rem;
+    display:flex;
+    flex-wrap:wrap;
+    gap:1.125rem;
+    opacity:0.92;
+  }
+  .screen-row3 b{ color:var(--screen-text); font-weight:800; }
+
+  /* INSTRUMENT SELECTOR + STEPPER */
+  .instrument-row{
+    display:flex;
+    gap:0.625rem;
+    margin-bottom:0.75rem;
+  }
+  .instrument-wrap{
+    position:relative;
+    flex:1;
+  }
+  .instrument-btn{
+    width:100%;
+    height:100%;
+    min-height:4.125rem;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    background:var(--panel);
+    border:none;
+    border-radius:0.75rem;
+    padding:0.625rem 1.125rem;
+    font-family:inherit;
+    cursor:pointer;
+    box-shadow: 0.3125rem 0.3125rem 0.625rem var(--shadow-dark), -0.3125rem -0.3125rem 0.625rem var(--shadow-light);
+  }
+  .instrument-btn:active{
+    box-shadow: inset 0.1875rem 0.1875rem 0.375rem var(--shadow-dark), inset -0.1875rem -0.1875rem 0.375rem var(--shadow-light);
+  }
+  .instrument-btn .lbl{
+    color:var(--ink-soft);
+    font-weight:800;
+    font-size:0.625rem;
+    letter-spacing:0.0938rem;
+    margin-right:0.75rem;
+    text-transform:uppercase;
+    flex-shrink:0;
+  }
+  .instrument-btn .cur{
+    flex:1;
+    text-align:left;
+    color:var(--ink);
+    font-size:1.1875rem;
+    font-weight:800;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  .instrument-btn .arrow{
+    font-size:0.6875rem;
+    color:var(--ink-soft);
+    transition:transform 0.15s ease;
+    flex-shrink:0;
+    margin-left:0.625rem;
+  }
+  .instrument-btn.open .arrow{ transform:rotate(180deg); }
+
+  .instrument-dropdown{
+    position:absolute;
+    top:calc(100% + 0.375rem);
+    left:0;
+    right:0;
+    max-height:17.5rem;
+    overflow-y:auto;
+    background:#e7e9eb;
+    border-radius:0.75rem;
+    box-shadow:0 0.75rem 1.625rem rgba(0,0,0,0.3), 0 0 0 0.0625rem #a2a6ac;
+    z-index:50;
+    display:none;
+    padding:0.375rem;
+  }
+  .instrument-dropdown.show{ display:block; }
+  .instrument-item{
+    padding:0.5rem 0.75rem;
+    font-size:0.7188rem;
+    font-weight:600;
+    color:var(--ink-soft);
+    border-radius:0.4375rem;
+    cursor:pointer;
+  }
+  .instrument-item:hover{
+    background:#d3d6da;
+    color:var(--ink);
+  }
+  .instrument-item.selected{
+    background:linear-gradient(180deg,#4d4f52,#26282b);
+    color:#eef0f1;
+  }
+
+  .instrument-stepper{
+    display:flex;
+    flex-direction:column;
+    gap:0.375rem;
+    width:4.75rem;
+    flex-shrink:0;
+  }
+  .stepper-btn{
+    flex:1;
+    font-family:inherit;
+    font-size:1.375rem;
+    font-weight:800;
+    color:var(--ink-soft);
+    background:linear-gradient(180deg,#e9ebec,#c9ccd0);
+    border:1px solid #a7abb1;
+    border-radius:0.5625rem;
+    cursor:pointer;
+    box-shadow: 0.1875rem 0.1875rem 0.375rem var(--shadow-dark), -0.1875rem -0.1875rem 0.375rem var(--shadow-light);
+  }
+  .stepper-btn:active{
+    transform:translateY(0.0625rem);
+    box-shadow: inset 0.125rem 0.125rem 0.25rem var(--shadow-dark), inset -0.0625rem -0.0625rem 0.125rem var(--shadow-light);
+  }
+  .preview-btn{
+    width:4.75rem;
+    min-height:4.125rem;
+    flex-shrink:0;
+    font-family:inherit;
+    font-size:0.6875rem;
+    font-weight:800;
+    letter-spacing:0.0312rem;
+    color:var(--ink-soft);
+    background:linear-gradient(180deg,#e9ebec,#c9ccd0);
+    border:1px solid #a7abb1;
+    border-radius:0.5625rem;
+    cursor:pointer;
+    box-shadow: 0.1875rem 0.1875rem 0.375rem var(--shadow-dark), -0.1875rem -0.1875rem 0.375rem var(--shadow-light);
+  }
+  .preview-btn:active, .preview-btn.playing{
+    transform:translateY(0.0625rem);
+    box-shadow: inset 0.125rem 0.125rem 0.25rem var(--shadow-dark), inset -0.0625rem -0.0625rem 0.125rem var(--shadow-light);
+  }
+  .preview-btn.playing{
+    background:radial-gradient(circle at 35% 30%, #7be894, var(--green-led) 70%);
+    color:#0e2b13;
+  }
+
+  /* OFFLINE / CACHE STRIP */
+  .offline-strip{
+    display:flex;
+    align-items:center;
+    gap:0.75rem;
+    background:var(--panel);
+    border-radius:0.75rem;
+    padding:0.625rem 0.875rem;
+    margin-bottom:1.125rem;
+    box-shadow: 0.3125rem 0.3125rem 0.625rem var(--shadow-dark), -0.3125rem -0.3125rem 0.625rem var(--shadow-light);
+  }
+  .offline-btn{
+    font-family:inherit;
+    font-size:0.6562rem;
+    font-weight:800;
+    letter-spacing:0.0312rem;
+    color:var(--ink-soft);
+    background:linear-gradient(180deg,#e9ebec,#c9ccd0);
+    border:1px solid #a7abb1;
+    border-radius:0.5rem;
+    padding:0.5625rem 0.875rem;
+    cursor:pointer;
+    box-shadow: 0.125rem 0.125rem 0.25rem var(--shadow-dark), -0.125rem -0.125rem 0.25rem var(--shadow-light);
+    white-space:nowrap;
+  }
+  .offline-btn:active{
+    transform:translateY(0.0625rem);
+    box-shadow: inset 0.125rem 0.125rem 0.25rem var(--shadow-dark), inset -0.0625rem -0.0625rem 0.125rem var(--shadow-light);
+  }
+  .offline-status{
+    font-size:0.6562rem;
+    font-weight:600;
+    color:var(--ink-soft);
+    letter-spacing:0.0187rem;
+    line-height:1.4;
+  }
+
+  /* MIDI LEARN */
+  @keyframes learnBlink{
+    0%,100%{ opacity:1; }
+    50%{ opacity:0.35; }
+  }
+  .learn-btn{ flex-shrink:0; }
+  .learn-btn.waiting{
+    background:linear-gradient(180deg,#ffb95a,#e8871e);
+    border-color:#c9711a;
+    color:#3a2405;
+    animation:learnBlink 0.6s step-start infinite;
+  }
+  .learn-btn.success{
+    background:linear-gradient(180deg,#8ef29f,#4cbf62);
+    border-color:#3a9e4d;
+    color:#0c2c12;
+    animation:none;
+  }
+  body.learn-picking, body.learn-picking *{ cursor:crosshair !important; }
+  body.learn-picking #downloadBankBtn, body.learn-picking #learnBtn{ cursor:not-allowed !important; }
+  body.learn-picking button:not(#downloadBankBtn):not(#learnBtn):hover,
+  body.learn-picking .knob-outer:hover,
+  body.learn-picking .white-key:hover,
+  body.learn-picking .black-key:hover,
+  body.learn-picking input[type="range"]:hover{
+    outline:3px dashed #f0a93f;
+    outline-offset:0.125rem;
+  }
+  .learn-target-selected{
+    outline:3px solid #f0a93f !important;
+    outline-offset:0.125rem;
+    animation:learnBlink 0.6s step-start infinite;
+  }
+
+  /* SECTION LABELS */
+  .section-label{
+    font-size:0.9375rem;
+    font-weight:700;
+    letter-spacing:0.1125rem;
+    text-transform:uppercase;
+    color:var(--ink-soft);
+    margin-bottom:0.75rem;
+    text-align:center;
+  }
+
+  /* FILTER SECTION */
+  .filter-panel{
+    background:var(--panel);
+    border-radius:0.875rem;
+    padding:0.875rem 0.75rem 1rem;
+    box-shadow: 0.3125rem 0.3125rem 0.625rem var(--shadow-dark), -0.3125rem -0.3125rem 0.625rem var(--shadow-light);
+    margin-bottom:1rem;
+  }
+  .filter-knobs-row{
+    display:flex;
+    gap:0.625rem;
+    justify-content:space-between;
+  }
+  .mini-knob-module{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+  }
+  .mini-knob-body{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:0.375rem;
+  }
+  .mini-knob-col{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+  }
+  .tiny-meter{
+    width:0.5625rem;
+    height:3.125rem;
+    padding:0.125rem;
+    gap:0.0938rem;
+  }
+
+  /* CONTROLS ROW - Volumen / Graves / Agudos, mismo tamaño */
+  .controls-row{
+    display:flex;
+    gap:0.875rem;
+    align-items:stretch;
+    margin-bottom:1.25rem;
+  }
+
+  .controls-row .module{
+    background:var(--panel);
+    border-radius:0.875rem;
+    padding:0.75rem 0.625rem 0.75rem;
+    box-shadow: 0.3125rem 0.3125rem 0.625rem var(--shadow-dark), -0.3125rem -0.3125rem 0.625rem var(--shadow-light);
+    flex:1;
+    min-height:9.875rem;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:space-between;
+  }
+  .module-body{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:0.625rem;
+    width:100%;
+  }
+  .module-body.gap-1cm{
+    gap:2.3622rem;
+  }
+  .module-control{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+  }
+
+  .slider-track-wrap{
+    height:6rem;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    margin:0.25rem 0 0.375rem;
+  }
+  input[type=range].vol-slider{
+    -webkit-appearance:none;
+    appearance:none;
+    width:6rem;
+    height:0.5625rem;
+    background:transparent;
+    transform:rotate(-90deg);
+    margin:0;
+  }
+  input[type=range].vol-slider::-webkit-slider-runnable-track{
+    height:0.5625rem;
+    border-radius:0.375rem;
+    background:linear-gradient(180deg,#aeb2b8,#c8cbcf);
+    box-shadow: inset 0.125rem 0.125rem 0.25rem var(--shadow-dark), inset -0.125rem -0.125rem 0.25rem var(--shadow-light);
+  }
+  input[type=range].vol-slider::-webkit-slider-thumb{
+    -webkit-appearance:none;
+    width:1.375rem;
+    height:1.0625rem;
+    border-radius:0.3125rem;
+    margin-top:-0.25rem;
+    background:linear-gradient(180deg,#f4f5f6,#c3c6ca);
+    border:1px solid #a7abb1;
+    box-shadow:0 0.125rem 0.25rem rgba(0,0,0,0.35), inset 0 0.0625rem 0 rgba(255,255,255,0.8);
+    cursor:pointer;
+  }
+  input[type=range].vol-slider::-moz-range-track{
+    height:0.5625rem;
+    border-radius:0.375rem;
+    background:linear-gradient(180deg,#aeb2b8,#c8cbcf);
+  }
+  input[type=range].vol-slider::-moz-range-thumb{
+    width:1.375rem;
+    height:1.0625rem;
+    border-radius:0.3125rem;
+    background:linear-gradient(180deg,#f4f5f6,#c3c6ca);
+    border:1px solid #a7abb1;
+    cursor:pointer;
+  }
+  .vol-value{
+    font-size:0.6875rem;
+    font-weight:700;
+    color:var(--ink);
+    background:rgba(0,0,0,0.06);
+    padding:0.1875rem 0.5625rem;
+    border-radius:0.5rem;
+    box-shadow: inset 0.0625rem 0.0625rem 0.1875rem var(--shadow-dark);
+  }
+
+  .knob-outer{
+    width:4rem;
+    height:4rem;
+    border-radius:50%;
+    background:radial-gradient(circle at 35% 30%, #f4f5f6, #c7cacf 60%, #aeb1b6 100%);
+    box-shadow:
+      0.25rem 0.25rem 0.5rem var(--shadow-dark),
+      -0.25rem -0.25rem 0.5rem var(--shadow-light),
+      inset 0 0 0.125rem rgba(0,0,0,0.2);
+    position:relative;
+    cursor:ns-resize;
+    touch-action:none;
+    margin-bottom:0.375rem;
+  }
+  .knob-outer.large{ width:4.625rem; height:4.625rem; }
+  .knob-outer.xlarge{ width:6rem; height:6rem; }
+  .knob-outer.small{ width:3.125rem; height:3.125rem; }
+  .knob-outer::before{
+    content:"";
+    position:absolute;
+    inset:0.4375rem;
+    border-radius:50%;
+    background:radial-gradient(circle at 40% 35%, #eceeef, #c3c6cb);
+    box-shadow: inset 0.0625rem 0.0625rem 0.1875rem rgba(255,255,255,0.7), inset -0.125rem -0.125rem 0.25rem rgba(0,0,0,0.15);
+  }
+  .knob-outer.large::before{ inset:0.5rem; }
+  .knob-outer.xlarge::before{ inset:0.625rem; }
+  .knob-outer.small::before{ inset:0.375rem; }
+  .knob-indicator{
+    position:absolute;
+    top:0.3125rem;
+    left:50%;
+    width:0.1875rem;
+    height:1.0625rem;
+    background:var(--ink);
+    border-radius:0.125rem;
+    transform-origin:50% 1.6875rem;
+    transform:translateX(-50%) rotate(0deg);
+    box-shadow:0 0 0.125rem rgba(0,0,0,0.4);
+  }
+  .knob-outer.large .knob-indicator{ height:1.25rem; transform-origin:50% 1.9375rem; top:0.375rem; }
+  .knob-outer.xlarge .knob-indicator{ height:1.625rem; transform-origin:50% 2.5625rem; top:0.4375rem; }
+  .knob-outer.small .knob-indicator{ height:0.875rem; transform-origin:50% 1.25rem; top:0.25rem; }
+  .knob-label{
+    font-size:0.9843rem;
+    font-weight:700;
+    letter-spacing:0.0625rem;
+    text-transform:uppercase;
+    color:var(--ink-soft);
+    margin-bottom:0.3125rem;
+  }
+  .knob-label.tiny{ font-size:0.7968rem; letter-spacing:0.025rem; text-align:center; }
+  .knob-value{
+    font-size:0.6875rem;
+    font-weight:700;
+    color:var(--ink);
+    background:rgba(0,0,0,0.06);
+    padding:0.125rem 0.5rem;
+    border-radius:0.4375rem;
+    min-width:2.375rem;
+    text-align:center;
+    box-shadow: inset 0.0625rem 0.0625rem 0.1875rem var(--shadow-dark);
+  }
+  .knob-value.tiny{ font-size:0.5938rem; padding:0.125rem 0.3125rem; min-width:1.625rem; }
+
+  /* EFFECTS ROW: reverb / chorus / delay */
+  .effects-row{
+    display:flex;
+    gap:0.875rem;
+    margin-bottom:1.375rem;
+    align-items:stretch;
+  }
+  .effect-module{
+    flex:1;
+    background:var(--panel);
+    border-radius:0.875rem;
+    padding:0.875rem 0.625rem 1rem;
+    box-shadow: 0.3125rem 0.3125rem 0.625rem var(--shadow-dark), -0.3125rem -0.3125rem 0.625rem var(--shadow-light);
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+  }
+  .effect-body{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:0.625rem;
+    width:100%;
+  }
+  .effect-onoff{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:0.375rem;
+  }
+  .onoff-btn{
+    width:2.625rem;
+    height:2.625rem;
+    border-radius:50%;
+    border:1px solid #a7abb1;
+    background:radial-gradient(circle at 35% 30%, #f4f5f6, #c7cacf 60%, #aeb1b6 100%);
+    box-shadow: 0.1875rem 0.1875rem 0.375rem var(--shadow-dark), -0.1875rem -0.1875rem 0.375rem var(--shadow-light);
+    font-size:0.5rem;
+    font-weight:800;
+    letter-spacing:0.025rem;
+    color:var(--ink-soft);
+    cursor:pointer;
+  }
+  .onoff-btn.active{
+    background:radial-gradient(circle at 35% 30%, #7be894, var(--green-led) 70%);
+    color:#0e2b13;
+    box-shadow: 0 0 0.5rem 0.125rem rgba(90,223,111,0.7), inset 0.0625rem 0.0625rem 0.125rem rgba(0,0,0,0.2);
+  }
+  .effect-center{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+  }
+  .delay-knobs-row{
+    display:flex;
+    gap:0.5rem;
+  }
+  .effect-meter{
+    display:flex;
+    flex-direction:column-reverse;
+    gap:0.1562rem;
+    width:0.8125rem;
+    height:4.375rem;
+    padding:0.1875rem;
+    background:#c3c6ca;
+    border-radius:0.25rem;
+    box-shadow: inset 0.125rem 0.125rem 0.25rem var(--shadow-dark), inset -0.0625rem -0.0625rem 0.125rem var(--shadow-light);
+    flex-shrink:0;
+  }
+  .meter-seg{
+    flex:1;
+    border-radius:0.0938rem;
+    background:#a7abb0;
+  }
+  .meter-seg.lit-low{ background:#5adf6f; box-shadow:0 0 0.1875rem rgba(90,223,111,0.8); }
+  .meter-seg.lit-mid{ background:#e8d34a; box-shadow:0 0 0.1875rem rgba(232,211,74,0.8); }
+  .meter-seg.lit-high{ background:#e05a4e; box-shadow:0 0 0.1875rem rgba(224,90,78,0.8); }
+
+  .preset-btns{
+    display:flex;
+    gap:0.375rem;
+    margin-top:0.75rem;
+  }
+  .preset-btn{
+    font-family:inherit;
+    font-size:0.625rem;
+    font-weight:700;
+    letter-spacing:0.0187rem;
+    color:var(--ink-soft);
+    background:linear-gradient(180deg,#e9ebec,#c9ccd0);
+    border:1px solid #a7abb1;
+    border-radius:0.5rem;
+    padding:0.4375rem 0.1875rem;
+    width:3.375rem;
+    cursor:pointer;
+    box-shadow: 0.125rem 0.125rem 0.25rem var(--shadow-dark), -0.125rem -0.125rem 0.25rem var(--shadow-light);
+    transition:transform 0.05s ease;
+  }
+  .preset-btn:active{
+    transform:translateY(0.0625rem);
+    box-shadow: inset 0.125rem 0.125rem 0.25rem var(--shadow-dark), inset -0.0625rem -0.0625rem 0.125rem var(--shadow-light);
+  }
+  .preset-btn.active{
+    background:linear-gradient(180deg,#4d4f52,#26282b);
+    color:#eef0f1;
+    border-color:#1d1f21;
+    box-shadow: inset 0.125rem 0.125rem 0.25rem rgba(0,0,0,0.5), 0 0 0.25rem rgba(0,0,0,0.3);
+  }
+
+  /* KEYBOARD */
+  .keyboard-panel{
+    background:var(--panel);
+    border-radius:0.875rem;
+    padding:1rem 1.125rem 1.125rem;
+    box-shadow: 0.3125rem 0.3125rem 0.625rem var(--shadow-dark), -0.3125rem -0.3125rem 0.625rem var(--shadow-light);
+  }
+  .keyboard{
+    position:relative;
+    display:flex;
+    height:4.0625rem;
+    background:linear-gradient(180deg,#3a3c3f,#141517);
+    border-radius:0.375rem;
+    padding:0.25rem;
+    box-shadow: inset 0 0.25rem 0.625rem rgba(0,0,0,0.6);
+    gap:0.125rem;
+  }
+  .white-key{
+    position:relative;
+    flex:1;
+    background:linear-gradient(180deg,var(--key-white),#dcdfe1);
+    border-radius:0 0 0.25rem 0.25rem;
+    border:1px solid #9a9ea3;
+    box-shadow: inset 0 -0.25rem 0.3125rem rgba(0,0,0,0.08), 0 0.0625rem 0.125rem rgba(0,0,0,0.3);
+    display:flex;
+    align-items:flex-end;
+    justify-content:center;
+    padding-bottom:0.25rem;
+    font-size:0.4375rem;
+    font-weight:700;
+    color:#6b6e72;
+    cursor:pointer;
+  }
+  .white-key.active{ background:linear-gradient(180deg,#c9dff0,#a9c8e2); }
+  .black-key{
+    position:absolute;
+    top:0;
+    width:3.3%;
+    height:62%;
+    background:linear-gradient(180deg,#2c2d2f,#0b0c0d);
+    border-radius:0 0 0.1875rem 0.1875rem;
+    box-shadow:0 0.125rem 0.1875rem rgba(0,0,0,0.6), inset 0 -0.1875rem 0.25rem rgba(255,255,255,0.05);
+    z-index:2;
+    cursor:pointer;
+  }
+  .black-key.active{ background:linear-gradient(180deg,#4a6a8a,#1c3245); }
+  .kb-label{
+    text-align:center;
+    font-size:0.625rem;
+    letter-spacing:0.0938rem;
+    color:var(--ink-soft);
+    font-weight:700;
+    margin-top:0.625rem;
+    text-transform:uppercase;
+  }
+
+  .footer-hint{
+    text-align:center;
+    font-size:0.625rem;
+    color:#7a7d82;
+    margin-top:0.875rem;
+    letter-spacing:0.025rem;
+  }
+
+  @media (max-width:40rem){
+    .controls-row{ flex-wrap:wrap; }
+    .effects-row{ flex-wrap:wrap; }
+    .filter-knobs-row{ flex-wrap:wrap; }
+    .mini-knob-module{ flex:1 1 40%; }
+    .screen-row1{ font-size:1.5rem; }
+    .instrument-row{ flex-wrap:wrap; }
+    .instrument-stepper{ width:100%; flex-direction:row; }
+  }
+</style>
+</head>
+<body>
+
+<div class="device">
+
+  <div class="header">
+    <div class="brand">
+      <svg width="228" height="26.4" viewBox="0 0 350 40" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="URUGM — Digital Sound Module">
+        <text xml:space="preserve" x="1" y="27" font-family="-apple-system, Helvetica, Arial, sans-serif" font-size="21" font-weight="800" letter-spacing="2.5" fill="var(--shadow-light)">URU</text>
+        <text xml:space="preserve" x="0" y="26" font-family="-apple-system, Helvetica, Arial, sans-serif" font-size="21" font-weight="800" letter-spacing="2.5" fill="var(--ink)">URU</text>
+        <text xml:space="preserve" x="65" y="27" font-family="-apple-system, Helvetica, Arial, sans-serif" font-size="21" font-weight="400" letter-spacing="2.5" fill="var(--shadow-light)">GM</text>
+        <text xml:space="preserve" x="64" y="26" font-family="-apple-system, Helvetica, Arial, sans-serif" font-size="21" font-weight="400" letter-spacing="2.5" fill="var(--ink)">GM</text>
+        <text xml:space="preserve" x="127" y="26" font-family="-apple-system, Helvetica, Arial, sans-serif" font-size="18" font-weight="400" letter-spacing="1" fill="var(--shadow-light)">Digital Sound Module</text>
+        <text xml:space="preserve" x="126" y="25" font-family="-apple-system, Helvetica, Arial, sans-serif" font-size="18" font-weight="400" letter-spacing="1" fill="var(--ink-soft)">Digital Sound Module</text>
+      </svg>
+    </div>
+    <div class="power-wrap"><span class="power-led" id="powerLed"></span><span id="statusLabel">CONNECTED</span></div>
+  </div>
+
+  <div class="screen-panel">
+    <div class="screen">
+      <div class="screen-row1" id="dispPreset">01 Acoustic Grand Piano</div>
+      <div class="screen-row2">
+        <span>VOL <b id="dispVol">80%</b></span>
+        <span>BASS <b id="dispBass">0dB</b></span>
+        <span>TREBLE <b id="dispTreble">0dB</b></span>
+      </div>
+      <div class="screen-row2">
+        <span>REVERB <b id="dispReverb">OFF</b></span>
+        <span>CHORUS <b id="dispChorus">OFF</b></span>
+        <span>DELAY <b id="dispDelay">OFF</b></span>
+      </div>
+      <div class="screen-row3">
+        <span>CUTOFF <b id="dispCutoff">70%</b></span>
+        <span>RESONANCE <b id="dispResonance">10%</b></span>
+        <span>ENV MOD <b id="dispEnvMod">0%</b></span>
+        <span>DECAY <b id="dispDecay">25%</b></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="instrument-row">
+    <div class="instrument-wrap">
+      <button class="instrument-btn" id="instrumentBtn">
+        <span class="lbl">Instrument</span>
+        <span class="cur" id="instrumentCur">01 Acoustic Grand Piano</span>
+        <span class="arrow">▼</span>
+      </button>
+      <div class="instrument-dropdown" id="instrumentDropdown"></div>
+    </div>
+    <button class="preview-btn" id="previewBtn">PREVIEW</button>
+    <div class="instrument-stepper">
+      <button class="stepper-btn" id="stepperMinus">−</button>
+      <button class="stepper-btn" id="stepperPlus">+</button>
+    </div>
+  </div>
+
+  <div class="offline-strip">
+    <button class="offline-btn learn-btn" id="learnBtn">LEARN</button>
+    <button class="offline-btn" id="downloadBankBtn">DOWNLOAD COMPLETE SOUND BANK</button>
+    <div class="offline-status" id="offlineStatus">Motor 100% offline: síntesis nativa Web Audio, sin dependencias de red.</div>
+  </div>
+
+  <div class="filter-panel">
+    <div class="section-label">Filters</div>
+    <div class="filter-knobs-row">
+      <div class="mini-knob-module">
+        <div class="knob-label tiny">Cut Off</div>
+        <div class="mini-knob-body">
+          <div class="mini-knob-col">
+            <div class="knob-outer small" id="knobCutoff">
+              <div class="knob-indicator" id="indCutoff"></div>
+            </div>
+            <div class="knob-value tiny" id="valCutoff">70%</div>
+          </div>
+          <div class="effect-meter tiny-meter" id="meterCutoff"></div>
+        </div>
+      </div>
+      <div class="mini-knob-module">
+        <div class="knob-label tiny">Resonance</div>
+        <div class="mini-knob-body">
+          <div class="mini-knob-col">
+            <div class="knob-outer small" id="knobResonance">
+              <div class="knob-indicator" id="indResonance"></div>
+            </div>
+            <div class="knob-value tiny" id="valResonance">10%</div>
+          </div>
+          <div class="effect-meter tiny-meter" id="meterResonance"></div>
+        </div>
+      </div>
+      <div class="mini-knob-module">
+        <div class="knob-label tiny">Env Mod</div>
+        <div class="mini-knob-body">
+          <div class="mini-knob-col">
+            <div class="knob-outer small" id="knobEnvMod">
+              <div class="knob-indicator" id="indEnvMod"></div>
+            </div>
+            <div class="knob-value tiny" id="valEnvMod">0%</div>
+          </div>
+          <div class="effect-meter tiny-meter" id="meterEnvMod"></div>
+        </div>
+      </div>
+      <div class="mini-knob-module">
+        <div class="knob-label tiny">Decay</div>
+        <div class="mini-knob-body">
+          <div class="mini-knob-col">
+            <div class="knob-outer small" id="knobDecay">
+              <div class="knob-indicator" id="indDecay"></div>
+            </div>
+            <div class="knob-value tiny" id="valDecay">25%</div>
+          </div>
+          <div class="effect-meter tiny-meter" id="meterDecay"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="controls-row">
+    <div class="module">
+      <div class="section-label">Main Level</div>
+      <div class="module-body">
+        <div class="module-control">
+          <div class="slider-track-wrap">
+            <input type="range" class="vol-slider" id="volSlider" min="0" max="100" value="80">
+          </div>
+          <div class="vol-value" id="volLabel">80%</div>
+        </div>
+        <div class="effect-meter" id="meterVolume"></div>
+      </div>
+    </div>
+
+    <div class="module">
+      <div class="section-label">Bass</div>
+      <div class="module-body gap-1cm">
+        <div class="module-control">
+          <div class="knob-outer xlarge" id="knobBass">
+            <div class="knob-indicator" id="indBass"></div>
+          </div>
+          <div class="knob-value" id="valBass">0 dB</div>
+        </div>
+        <div class="effect-meter" id="meterBass"></div>
+      </div>
+    </div>
+
+    <div class="module">
+      <div class="section-label">Treble</div>
+      <div class="module-body gap-1cm">
+        <div class="module-control">
+          <div class="knob-outer xlarge" id="knobTreble">
+            <div class="knob-indicator" id="indTreble"></div>
+          </div>
+          <div class="knob-value" id="valTreble">0 dB</div>
+        </div>
+        <div class="effect-meter" id="meterTreble"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="effects-row">
+
+    <div class="effect-module">
+      <div class="section-label">Reverb</div>
+      <div class="effect-body">
+        <div class="effect-onoff"><button class="onoff-btn" id="reverbOnOff">ON</button></div>
+        <div class="effect-center">
+          <div class="knob-outer large" id="knobReverb"><div class="knob-indicator" id="indReverb"></div></div>
+          <div class="knob-value" id="valReverb">0%</div>
+        </div>
+        <div class="effect-meter" id="meterReverb"></div>
+      </div>
+      <div class="preset-btns" id="reverbPresets">
+        <button class="preset-btn" data-effect="reverb" data-value="20">20%</button>
+        <button class="preset-btn" data-effect="reverb" data-value="85">80%</button>
+      </div>
+    </div>
+
+    <div class="effect-module">
+      <div class="section-label">Chorus</div>
+      <div class="effect-body">
+        <div class="effect-onoff"><button class="onoff-btn" id="chorusOnOff">ON</button></div>
+        <div class="effect-center">
+          <div class="knob-outer large" id="knobChorus"><div class="knob-indicator" id="indChorus"></div></div>
+          <div class="knob-value" id="valChorus">0%</div>
+        </div>
+        <div class="effect-meter" id="meterChorus"></div>
+      </div>
+      <div class="preset-btns" id="chorusPresets">
+        <button class="preset-btn" data-effect="chorus" data-value="15">20%</button>
+        <button class="preset-btn" data-effect="chorus" data-value="80">80%</button>
+      </div>
+    </div>
+
+    <div class="effect-module">
+      <div class="section-label">Delay</div>
+      <div class="effect-body">
+        <div class="effect-onoff"><button class="onoff-btn" id="delayOnOff">ON</button></div>
+        <div class="effect-center">
+          <div class="delay-knobs-row">
+            <div class="mini-knob-module">
+              <div class="knob-label tiny">Tiempo</div>
+              <div class="knob-outer small" id="knobDelayTime"><div class="knob-indicator" id="indDelayTime"></div></div>
+              <div class="knob-value tiny" id="valDelayTime">30%</div>
+            </div>
+            <div class="mini-knob-module">
+              <div class="knob-label tiny">Feedbk</div>
+              <div class="knob-outer small" id="knobDelayFeedback"><div class="knob-indicator" id="indDelayFeedback"></div></div>
+              <div class="knob-value tiny" id="valDelayFeedback">30%</div>
+            </div>
+            <div class="mini-knob-module">
+              <div class="knob-label tiny">Mix</div>
+              <div class="knob-outer small" id="knobDelayMix"><div class="knob-indicator" id="indDelayMix"></div></div>
+              <div class="knob-value tiny" id="valDelayMix">0%</div>
+            </div>
+          </div>
+        </div>
+        <div class="effect-meter" id="meterDelay"></div>
+      </div>
+      <div class="preset-btns" id="delayPresets">
+        <button class="preset-btn" data-effect="delay" data-time="20" data-fb="20" data-mix="20">20%</button>
+        <button class="preset-btn" data-effect="delay" data-time="75" data-fb="65" data-mix="80">80%</button>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="keyboard-panel">
+    <div class="section-label">Virtual Keyboard</div>
+    <div class="keyboard" id="keyboard"></div>
+    <div class="kb-label">CLICK or TAP or PRESS (A S D F G H J K) or MIDI/USB CONNECTED CONTROLLER</div>
+  </div>
+
+  <div class="footer-hint">Tocá una tecla para activar el motor de audio (política de autoplay del navegador)</div>
+
+</div>
+
+<!-- ================= MOTOR SF2 REAL (spessasynth, banco GeneralUser GS) =================
+     Resuelve el import bare "spessasynth_core" que usa spessasynth_lib. -->
+<script type="importmap">
+{
+  "imports": {
+    "spessasynth_core": "https://cdn.jsdelivr.net/npm/spessasynth_core@4.3.12/dist/index.js"
+  }
+}
+</script>
+<script type="module">
+  import { WorkletSynthesizer } from "https://cdn.jsdelivr.net/npm/spessasynth_lib@4.3.8/dist/index.js";
+
+  const SF2_URL = "https://raw.githubusercontent.com/mrbumpy409/GeneralUser-GS/main/GeneralUser-GS.sf2";
+  const PROCESSOR_URL = "https://cdn.jsdelivr.net/npm/spessasynth_lib@4.3.8/dist/spessasynth_processor.min.js";
+  const SF2_CACHE_NAME = "sf73-sf2-bank-v1";
+
+  async function fetchSF2CacheFirst(){
+    // Cache First real vía Cache Storage API: la primera vez descarga y cachea;
+    // de ahí en más se sirve 100% desde el dispositivo, sin tocar la red.
+    if('caches' in window){
+      try{
+        const cache = await caches.open(SF2_CACHE_NAME);
+        let resp = await cache.match(SF2_URL);
+        if(resp) return await resp.arrayBuffer();
+        if(!navigator.onLine) throw new Error('sin conexión y sin caché previa del banco SF2');
+        resp = await fetch(SF2_URL);
+        if(!resp.ok) throw new Error('HTTP ' + resp.status + ' al descargar el banco SF2');
+        await cache.put(SF2_URL, resp.clone());
+        return await resp.arrayBuffer();
+      }catch(err){
+        if(!navigator.onLine) throw err;
+        const resp = await fetch(SF2_URL);
+        if(!resp.ok) throw new Error('HTTP ' + resp.status + ' al descargar el banco SF2');
+        return await resp.arrayBuffer();
+      }
+    }
+    if(!navigator.onLine) throw new Error('sin conexión y sin Cache Storage disponible');
+    const resp = await fetch(SF2_URL);
+    if(!resp.ok) throw new Error('HTTP ' + resp.status + ' al descargar el banco SF2');
+    return await resp.arrayBuffer();
+  }
+
+  window.SF73_SF2 = {
+    ready: false,
+    synth: null,
+    error: null,
+    _initPromise: null,
+    // Idempotente: si ya se llamó, devuelve la misma promesa en curso/resuelta.
+    init(audioCtx, connectTarget){
+      if(this._initPromise) return this._initPromise;
+      this._initPromise = (async () => {
+        try{
+          await audioCtx.audioWorklet.addModule(PROCESSOR_URL);
+          const synth = new WorkletSynthesizer(audioCtx);
+          synth.connect(connectTarget);
+          const sf2Buffer = await fetchSF2CacheFirst();
+          await synth.soundBankManager.addSoundBank(sf2Buffer, "main");
+          await synth.isReady;
+          this.synth = synth;
+          this.ready = true;
+        }catch(err){
+          this.error = err;
+          console.warn('Motor SF2 no disponible, se usa el sintetizador nativo como respaldo (fail-safe):', err);
+        }
+      })();
+      return this._initPromise;
+    },
+    programChange(programNumber){ if(this.synth) this.synth.programChange(0, programNumber); },
+    noteOn(midiNote, velocity){ if(this.synth) this.synth.noteOn(0, midiNote, velocity); },
+    noteOff(midiNote){ if(this.synth) this.synth.noteOff(0, midiNote); },
+    pitchWheel(value14){ if(this.synth) this.synth.pitchWheel(0, value14); },
+    modWheel(value){ if(this.synth) this.synth.controllerChange(0, 1, value); }
+  };
+</script>
+
+<script>
+(function(){
+
+  // ================= GENERAL MIDI INSTRUMENT LIST (128 programas) =================
+  const GM_NAMES = [
+    "Acoustic Grand Piano","Bright Acoustic Piano","Electric Grand Piano","Honky-tonk Piano",
+    "Electric Piano 1","Electric Piano 2","Harpsichord","Clavinet",
+    "Celesta","Glockenspiel","Music Box","Vibraphone","Marimba","Xylophone","Tubular Bells","Dulcimer",
+    "Drawbar Organ","Percussive Organ","Rock Organ","Church Organ","Reed Organ","Accordion","Harmonica","Tango Accordion",
+    "Acoustic Guitar (nylon)","Acoustic Guitar (steel)","Electric Guitar (jazz)","Electric Guitar (clean)",
+    "Electric Guitar (muted)","Overdriven Guitar","Distortion Guitar","Guitar Harmonics",
+    "Acoustic Bass","Electric Bass (finger)","Electric Bass (pick)","Fretless Bass",
+    "Slap Bass 1","Slap Bass 2","Synth Bass 1","Synth Bass 2",
+    "Violin","Viola","Cello","Contrabass","Tremolo Strings","Pizzicato Strings","Orchestral Harp","Timpani",
+    "String Ensemble 1","String Ensemble 2","Synth Strings 1","Synth Strings 2",
+    "Choir Aahs","Voice Oohs","Synth Voice","Orchestra Hit",
+    "Trumpet","Trombone","Tuba","Muted Trumpet","French Horn","Brass Section","Synth Brass 1","Synth Brass 2",
+    "Soprano Sax","Alto Sax","Tenor Sax","Baritone Sax","Oboe","English Horn","Bassoon","Clarinet",
+    "Piccolo","Flute","Recorder","Pan Flute","Blown Bottle","Shakuhachi","Whistle","Ocarina",
+    "Lead 1 (square)","Lead 2 (sawtooth)","Lead 3 (calliope)","Lead 4 (chiff)",
+    "Lead 5 (charang)","Lead 6 (voice)","Lead 7 (fifths)","Lead 8 (bass+lead)",
+    "Pad 1 (new age)","Pad 2 (warm)","Pad 3 (polysynth)","Pad 4 (choir)",
+    "Pad 5 (bowed)","Pad 6 (metallic)","Pad 7 (halo)","Pad 8 (sweep)",
+    "FX 1 (rain)","FX 2 (soundtrack)","FX 3 (crystal)","FX 4 (atmosphere)",
+    "FX 5 (brightness)","FX 6 (goblins)","FX 7 (echoes)","FX 8 (sci-fi)",
+    "Sitar","Banjo","Shamisen","Koto","Kalimba","Bag Pipe","Fiddle","Shanai",
+    "Tinkle Bell","Agogo","Steel Drums","Woodblock","Taiko Drum","Melodic Tom","Synth Drum","Reverse Cymbal",
+    "Guitar Fret Noise","Breath Noise","Seashore","Bird Tweet","Telephone Ring","Helicopter","Applause","Gunshot"
+  ];
+  function padNum(idx){ return String(idx+1).padStart(2,'0'); }
+  const GM_INSTRUMENTS = GM_NAMES.map((n, i) => padNum(i) + " " + n);
+
+  const CATEGORIES = [
+    {osc1:"triangle", osc2:"sine",     gain2:0.45, detune:3,  pluck:true,  octave:0,   vibrato:0, bright:1.0},
+    {osc1:"sine",     osc2:"triangle", gain2:0.30, detune:2,  pluck:true,  octave:12,  vibrato:0, bright:1.4},
+    {osc1:"square",   osc2:"sawtooth", gain2:0.35, detune:3,  pluck:false, octave:0,   vibrato:0, bright:0.9},
+    {osc1:"triangle", osc2:"sawtooth", gain2:0.40, detune:5,  pluck:true,  octave:0,   vibrato:0, bright:1.1},
+    {osc1:"sawtooth", osc2:"sine",     gain2:0.30, detune:2,  pluck:false, octave:-12, vibrato:0, bright:0.6},
+    {osc1:"sawtooth", osc2:"sawtooth", gain2:0.55, detune:9,  pluck:false, octave:0,   vibrato:5, bright:0.9},
+    {osc1:"sawtooth", osc2:"triangle", gain2:0.55, detune:11, pluck:false, octave:0,   vibrato:6, bright:0.95},
+    {osc1:"sawtooth", osc2:"square",   gain2:0.45, detune:6,  pluck:false, octave:0,   vibrato:3, bright:1.2},
+    {osc1:"square",   osc2:"sawtooth", gain2:0.35, detune:4,  pluck:false, octave:0,   vibrato:4, bright:1.0},
+    {osc1:"sine",     osc2:"triangle", gain2:0.20, detune:1,  pluck:false, octave:12,  vibrato:2, bright:1.3},
+    {osc1:"sawtooth", osc2:"square",   gain2:0.50, detune:7,  pluck:false, octave:0,   vibrato:0, bright:1.35},
+    {osc1:"triangle", osc2:"sine",     gain2:0.55, detune:8,  pluck:false, octave:0,   vibrato:4, bright:0.75},
+    {osc1:"sine",     osc2:"sawtooth", gain2:0.40, detune:14, pluck:false, octave:12,  vibrato:1, bright:1.1},
+    {osc1:"triangle", osc2:"sawtooth", gain2:0.40, detune:6,  pluck:true,  octave:0,   vibrato:0, bright:1.05},
+    {osc1:"square",   osc2:"square",   gain2:0.20, detune:3,  pluck:true,  octave:0,   vibrato:0, bright:1.15},
+    {osc1:"sawtooth", osc2:"square",   gain2:0.50, detune:20, pluck:true,  octave:0,   vibrato:0, bright:1.4},
+  ];
+  const WAVE_CYCLE = ["sine","triangle","square","sawtooth"];
+  function getPatch(idx){
+    const catIndex = Math.min(Math.floor(idx/8), CATEGORIES.length-1);
+    const cat = CATEGORIES[catIndex];
+    const within = idx % 8;
+    const osc2 = within >= 4 ? WAVE_CYCLE[(WAVE_CYCLE.indexOf(cat.osc2) + 1) % WAVE_CYCLE.length] : cat.osc2;
+    return {
+      osc1: cat.osc1, osc2: osc2,
+      detune: cat.detune + within*2.4,
+      gain2: Math.min(0.85, cat.gain2 + within*0.035),
+      pluck: cat.pluck, octave: cat.octave, vibrato: cat.vibrato,
+      bright: cat.bright * (0.9 + within*0.03)
+    };
+  }
+
+  let currentInstrumentIndex = 0;
+  let currentPatch = getPatch(0);
+
+  // ================= MOTOR SF2 REAL (banco GeneralUser GS, 128 instrumentos, samples reales) =================
+  // El parseo/síntesis SF2 corre en window.SF73_SF2 (definido en el <script type="module">
+  // más abajo, sobre un AudioWorklet real). Este bloque es solo el puente de conexión.
+  // Si el motor SF2 no está disponible (sin red la primera vez, navegador viejo, etc.),
+  // el módulo sigue sonando igual gracias al sintetizador nativo (fail-safe, más abajo).
+  let engineState = 'synth'; // 'caching' | 'cached' | 'synth' -> referencia interna, no se imprime en pantalla
+
+  function sf2Ready(){ return !!(window.SF73_SF2 && window.SF73_SF2.ready); }
+
+  function initSF2Engine(){
+    if(!window.SF73_SF2) return;
+    engineState = 'caching';
+    updateConnDisplay();
+    window.SF73_SF2.init(audioCtx, sharedSF2Filter).then(() => {
+      if(sf2Ready()){
+        window.SF73_SF2.programChange(currentInstrumentIndex);
+        engineState = 'cached';
+      } else {
+        engineState = 'synth';
+      }
+      updateConnDisplay();
+    });
+  }
+
+  // ================= AUDIO ENGINE =================
+  let audioCtx = null;
+  let masterGain, bassFilter, trebleFilter, sharedSF2Filter;
+  let chorusDelay, chorusLFO, chorusLFOGain, chorusWetGain, chorusDryGain;
+  let delayNode, delayFeedbackGain, delayWetGain, delayDryGain;
+  let convolver, reverbWetGain, reverbDryGain;
+
+  const activeVoices = {};
+
+  function buildImpulseResponse(ctx, duration, decay){
+    const rate = ctx.sampleRate;
+    const length = rate * duration;
+    const impulse = ctx.createBuffer(2, length, rate);
+    for(let ch=0; ch<2; ch++){
+      const data = impulse.getChannelData(ch);
+      for(let i=0; i<length; i++){
+        data[i] = (Math.random()*2-1) * Math.pow(1 - i/length, decay);
+      }
+    }
+    return impulse;
+  }
+
+  function initAudio(){
+    if(audioCtx) return;
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+    masterGain = audioCtx.createGain();
+    masterGain.gain.value = parseFloat(volSlider.value)/100;
+
+    bassFilter = audioCtx.createBiquadFilter();
+    bassFilter.type = "lowshelf";
+    bassFilter.frequency.value = 200;
+    bassFilter.gain.value = 0;
+
+    // Filtro compartido de Cut Off/Resonance/Env Mod/Decay para el motor SF2
+    // real (el WorkletSynthesizer se conecta acá, no directo a bassFilter).
+    // Así los 4 knobs de "Filters" afectan de verdad al sonido que se escucha.
+    sharedSF2Filter = audioCtx.createBiquadFilter();
+    sharedSF2Filter.type = "lowpass";
+    sharedSF2Filter.frequency.value = filterCutoffHz;
+    sharedSF2Filter.Q.value = filterResonanceQ;
+    sharedSF2Filter.connect(bassFilter);
+
+    trebleFilter = audioCtx.createBiquadFilter();
+    trebleFilter.type = "highshelf";
+    trebleFilter.frequency.value = 3000;
+    trebleFilter.gain.value = 0;
+
+    // Chorus
+    chorusDelay = audioCtx.createDelay(0.05);
+    chorusDelay.delayTime.value = 0.012;
+    chorusLFO = audioCtx.createOscillator();
+    chorusLFO.type = "sine";
+    chorusLFO.frequency.value = 1.3;
+    chorusLFOGain = audioCtx.createGain();
+    chorusLFOGain.gain.value = 0.004;
+    chorusLFO.connect(chorusLFOGain);
+    chorusLFOGain.connect(chorusDelay.delayTime);
+    chorusLFO.start();
+    chorusWetGain = audioCtx.createGain(); chorusWetGain.gain.value = 0;
+    chorusDryGain = audioCtx.createGain(); chorusDryGain.gain.value = 1;
+
+    // Delay (eco)
+    delayNode = audioCtx.createDelay(1.0);
+    delayNode.delayTime.value = 0.26;
+    delayFeedbackGain = audioCtx.createGain();
+    delayFeedbackGain.gain.value = 0.3;
+    delayNode.connect(delayFeedbackGain);
+    delayFeedbackGain.connect(delayNode);
+    delayWetGain = audioCtx.createGain(); delayWetGain.gain.value = 0;
+    delayDryGain = audioCtx.createGain(); delayDryGain.gain.value = 1;
+
+    // Reverb
+    convolver = audioCtx.createConvolver();
+    convolver.buffer = buildImpulseResponse(audioCtx, 2.5, 3.2);
+    reverbWetGain = audioCtx.createGain(); reverbWetGain.gain.value = 0;
+    reverbDryGain = audioCtx.createGain(); reverbDryGain.gain.value = 1;
+
+    const postEqNode = audioCtx.createGain();
+    const chorusSum = audioCtx.createGain();
+    const delaySum = audioCtx.createGain();
+    const reverbSum = audioCtx.createGain();
+
+    bassFilter.connect(trebleFilter);
+    trebleFilter.connect(postEqNode);
+
+    postEqNode.connect(chorusDryGain);
+    postEqNode.connect(chorusDelay);
+    chorusDelay.connect(chorusWetGain);
+    chorusDryGain.connect(chorusSum);
+    chorusWetGain.connect(chorusSum);
+
+    chorusSum.connect(delayDryGain);
+    chorusSum.connect(delayNode);
+    delayNode.connect(delayWetGain);
+    delayDryGain.connect(delaySum);
+    delayWetGain.connect(delaySum);
+
+    delaySum.connect(reverbDryGain);
+    delaySum.connect(convolver);
+    convolver.connect(reverbWetGain);
+    reverbDryGain.connect(reverbSum);
+    reverbWetGain.connect(reverbSum);
+
+    reverbSum.connect(masterGain);
+    masterGain.connect(audioCtx.destination);
+
+    setStatus('idle');
+    updateConnDisplay();
+    initMIDI();
+    initSF2Engine();
+  }
+
+  function noteFreq(semitoneFromA4){ return 440 * Math.pow(2, semitoneFromA4/12); }
+
+  let filterCutoffHz = 4000, filterResonanceQ = 1.5, filterEnvModAmount = 0, filterDecaySeconds = 0.4;
+
+  // ================= PITCH BEND / MOD WHEEL (controladores continuos MIDI) =================
+  const PITCH_BEND_RANGE_SEMITONES = 2;   // rango por defecto: +/- 2 semitonos
+  const MOD_WHEEL_MAX_CENTS = 35;         // profundidad extra de vibrato a mod wheel = 127
+  const PARAM_GLIDE = 0.012;              // time constant: mapeo fluido, sin zipper noise ni lag
+  let pitchBendSemitones = 0;             // -2..+2 (según rango configurado)
+  let modWheelDepthCents = 0;             // 0..MOD_WHEEL_MAX_CENTS
+
+  // Aplica el bend actual a UNA voz activa del sintetizador fail-safe
+  // (las voces del motor SF2 se manejan aparte, vía window.SF73_SF2.pitchWheel)
+  function applyPitchBendToVoice(v){
+    if(!v || !audioCtx || v.mode !== 'synth') return;
+    const now = audioCtx.currentTime;
+    const cents = pitchBendSemitones * 100;
+    v.osc.detune.setTargetAtTime(cents, now, PARAM_GLIDE);
+    v.osc2.detune.setTargetAtTime(v.baseDetune2 + cents, now, PARAM_GLIDE);
+  }
+  function applyPitchBendToAllVoices(){
+    Object.keys(activeVoices).forEach(id => applyPitchBendToVoice(activeVoices[id]));
+  }
+
+  // Aplica la profundidad de vibrato (mod wheel) a UNA voz activa del sintetizador fail-safe
+  function applyModWheelToVoice(v){
+    if(!v || !audioCtx || !v.vibGain) return;
+    const now = audioCtx.currentTime;
+    v.vibGain.gain.setTargetAtTime(v.baseVibrato + modWheelDepthCents, now, PARAM_GLIDE);
+  }
+  function applyModWheelToAllVoices(){
+    Object.keys(activeVoices).forEach(id => applyModWheelToVoice(activeVoices[id]));
+  }
+
+  // Crea el sub-sistema de vibrato (LFO + gain) y lo conecta a los AudioParams
+  // de detune indicados. Se crea SIEMPRE (aunque el patch no tenga vibrato base)
+  // para que la Mod Wheel pueda agregar vibrato en vivo a cualquier instrumento.
+  function attachVibrato(baseVibrato, detuneParams){
+    const vibLFO = audioCtx.createOscillator();
+    vibLFO.type = "sine"; vibLFO.frequency.value = 5.2;
+    const vibGain = audioCtx.createGain();
+    vibGain.gain.value = baseVibrato + modWheelDepthCents;
+    vibLFO.connect(vibGain);
+    detuneParams.forEach(p => vibGain.connect(p));
+    vibLFO.start();
+    return { vibLFO, vibGain };
+  }
+
+  function buildVoiceFilter(bright){
+    const voiceFilter = audioCtx.createBiquadFilter();
+    voiceFilter.type = "lowpass";
+    voiceFilter.Q.value = filterResonanceQ;
+    const now = audioCtx.currentTime;
+    const baseCutoff = Math.min(11000, filterCutoffHz * bright);
+    const envPeak = Math.min(12000, baseCutoff + filterEnvModAmount);
+    voiceFilter.frequency.setValueAtTime(Math.max(20, envPeak), now);
+    voiceFilter.frequency.exponentialRampToValueAtTime(Math.max(20, baseCutoff), now + filterDecaySeconds);
+    return voiceFilter;
+  }
+
+  // Dispara la envolvente de Env Mod/Decay sobre el filtro COMPARTIDO que usa
+  // el motor SF2 real (no tiene voces individuales como el sintetizador nativo,
+  // así que el "Env Mod" barre el filtro entero en cada nota, tipo auto-wah).
+  function triggerSharedFilterEnvelope(){
+    if(!sharedSF2Filter) return;
+    const now = audioCtx.currentTime;
+    const baseCutoff = filterCutoffHz;
+    const envPeak = Math.min(12000, baseCutoff + filterEnvModAmount);
+    sharedSF2Filter.frequency.cancelScheduledValues(now);
+    sharedSF2Filter.frequency.setValueAtTime(Math.max(20, envPeak), now);
+    sharedSF2Filter.frequency.exponentialRampToValueAtTime(Math.max(20, baseCutoff), now + filterDecaySeconds);
+  }
+
+  // Modo B (fail-safe): síntesis nativa por osciladores — nunca deja el módulo mudo
+  function startSynthNote(id, semitone){
+    const patch = currentPatch;
+    const finalSemitone = semitone + patch.octave;
+
+    const osc = audioCtx.createOscillator();
+    osc.type = patch.osc1;
+    osc.frequency.value = noteFreq(finalSemitone);
+    osc.detune.value = pitchBendSemitones * 100;
+
+    const osc2 = audioCtx.createOscillator();
+    osc2.type = patch.osc2;
+    osc2.frequency.value = noteFreq(finalSemitone);
+    osc2.detune.value = patch.detune + pitchBendSemitones * 100;
+
+    const osc2Gain = audioCtx.createGain();
+    osc2Gain.gain.value = patch.gain2;
+
+    // Vibrato (Mod Wheel): siempre disponible, aunque el patch base no tenga vibrato
+    const baseVibrato = patch.vibrato || 0;
+    const { vibLFO, vibGain } = attachVibrato(baseVibrato, [osc.detune, osc2.detune]);
+
+    const voiceFilter = buildVoiceFilter(patch.bright);
+    const now = audioCtx.currentTime;
+    const voiceGain = audioCtx.createGain();
+    voiceGain.gain.setValueAtTime(0, now);
+    voiceGain.gain.linearRampToValueAtTime(0.2, now + 0.012);
+    const sustainLevel = patch.pluck ? 0.0001 : 0.12;
+    voiceGain.gain.exponentialRampToValueAtTime(Math.max(0.0001, sustainLevel), now + 0.012 + filterDecaySeconds);
+
+    osc.connect(voiceGain);
+    osc2.connect(osc2Gain);
+    osc2Gain.connect(voiceGain);
+    voiceGain.connect(voiceFilter);
+    voiceFilter.connect(bassFilter);
+
+    osc.start(); osc2.start();
+
+    activeVoices[id] = { mode:'synth', osc, osc2, gain: voiceGain, filter: voiceFilter, vibLFO, vibGain, baseVibrato, baseDetune2: patch.detune };
+  }
+
+  function startNote(id, semitone, velocity){
+    if(!audioCtx) initAudio();
+    if(activeVoices[id]) return;
+
+    const targetMidi = 69 + semitone;
+    const vel = velocity || 100;
+
+    if(sf2Ready()){
+      // Motor SF2 real (GeneralUser GS, 128 instrumentos, samples reales de 16-bit)
+      window.SF73_SF2.noteOn(targetMidi, vel);
+      activeVoices[id] = { mode:'sf2', midiNote: targetMidi };
+      engineState = 'cached';
+      triggerSharedFilterEnvelope();
+    } else {
+      // Fail-safe: mientras el SF2 no esté listo (primera carga o sin red), el
+      // módulo sigue sonando con el sintetizador nativo por osciladores.
+      startSynthNote(id, semitone);
+      engineState = 'synth';
+    }
+    updateConnDisplay();
+    noteHeldStart();
+  }
+
+  function stopNote(id){
+    const v = activeVoices[id];
+    if(!v || !audioCtx) return;
+    if(v.mode === 'sf2'){
+      window.SF73_SF2.noteOff(v.midiNote);
+      delete activeVoices[id];
+      noteHeldEnd();
+      return;
+    }
+    const now = audioCtx.currentTime;
+    v.gain.gain.cancelScheduledValues(now);
+    v.gain.gain.setValueAtTime(Math.max(0.0001, v.gain.gain.value), now);
+    v.gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.22);
+    v.osc.stop(now + 0.26);
+    v.osc2.stop(now + 0.26);
+    if(v.vibLFO) v.vibLFO.stop(now + 0.26);
+    delete activeVoices[id];
+    noteHeldEnd();
+  }
+
+  // ================= STATUS LED / MIDI ACTIVITY =================
+  const powerLed = document.getElementById('powerLed');
+  const statusLabel = document.getElementById('statusLabel');
+  let heldCount = 0;
+  let ccFlashTimer = null;
+
+  function setStatus(mode){
+    // mode: 'off' | 'idle' | 'active'
+    if(mode === 'off'){
+      powerLed.style.background = 'var(--red-led)';
+      powerLed.style.boxShadow = '0 0 6px 2px rgba(224,90,78,0.7), inset 0 0 2px rgba(0,0,0,0.4)';
+      statusLabel.textContent = 'STANDBY';
+    } else if(mode === 'active'){
+      powerLed.style.background = 'var(--yellow-led)';
+      powerLed.style.boxShadow = '0 0 9px 3px rgba(240,201,63,0.85), inset 0 0 2px rgba(0,0,0,0.4)';
+      statusLabel.textContent = 'CONNECTED';
+    } else {
+      powerLed.style.background = 'var(--green-led)';
+      powerLed.style.boxShadow = '0 0 8px 3px rgba(90,223,111,0.7), inset 0 0 2px rgba(0,0,0,0.4)';
+      statusLabel.textContent = 'CONNECTED';
+    }
+  }
+  setStatus('off');
+
+  function noteHeldStart(){ heldCount++; setStatus('active'); }
+  function noteHeldEnd(){ heldCount = Math.max(0, heldCount-1); if(heldCount===0) setStatus(audioCtx ? 'idle' : 'off'); }
+  function flashMidiCC(){
+    setStatus('active');
+    clearTimeout(ccFlashTimer);
+    ccFlashTimer = setTimeout(() => { if(heldCount===0) setStatus(audioCtx ? 'idle' : 'off'); }, 160);
+  }
+
+  // Web MIDI: escucha teclas, faders y knobs de un controlador USB/MIDI conectado.
+  // midiKeyElemsByNumber se completa más abajo, al construir el teclado virtual,
+  // para poder iluminar la tecla visual correcta cuando llega una nota MIDI.
+  const midiKeyElemsByNumber = {};
+  function initMIDI(){
+    if(!navigator.requestMIDIAccess) return;
+    navigator.requestMIDIAccess().then(access => {
+      function bind(input){
+        input.onmidimessage = (msg) => {
+          const [status, d1, d2] = msg.data;
+          const cmd = status & 0xf0;
+
+          // MIDI LEARN: si estamos esperando la señal para completar un mapeo, la
+          // capturamos acá, la asignamos, y no seguimos con el procesamiento normal.
+          if(learnState === 'waitingMidi'){
+            completeLearn(cmd, d1);
+            return;
+          }
+          // Si el mensaje coincide con un mapeo ya aprendido, ejecutamos la acción
+          // sobre el elemento asignado (además del comportamiento nativo de abajo).
+          applyLearnedMapping(cmd, d1, d2);
+
+          if(cmd === 0x90 && d2 > 0){
+            startNote('midi-'+d1, d1-69, d2);
+            const el = midiKeyElemsByNumber[d1]; if(el) el.classList.add('active');
+            flashMidiCC();
+          } else if(cmd === 0x80 || (cmd === 0x90 && d2 === 0)){
+            stopNote('midi-'+d1);
+            const el = midiKeyElemsByNumber[d1]; if(el) el.classList.remove('active');
+          } else if(cmd === 0xE0){
+            // Pitch Bend: 14 bits repartidos en LSB (d1) + MSB (d2). Centro=8192.
+            const value14 = (d2 << 7) | d1;
+            const normalized = (value14 - 8192) / 8192; // -1..~+1
+            pitchBendSemitones = normalized * PITCH_BEND_RANGE_SEMITONES;
+            applyPitchBendToAllVoices();
+            if(sf2Ready()) window.SF73_SF2.pitchWheel(value14);
+            flashMidiCC();
+          } else if(cmd === 0xB0 && d1 === 1){
+            // Control Change #1: Mod Wheel -> profundidad de vibrato (LFO)
+            modWheelDepthCents = (d2 / 127) * MOD_WHEEL_MAX_CENTS;
+            applyModWheelToAllVoices();
+            if(sf2Ready()) window.SF73_SF2.modWheel(d2);
+            flashMidiCC();
+          } else {
+            flashMidiCC();
+          }
+        };
+      }
+      access.inputs.forEach(bind);
+      access.onstatechange = () => { access.inputs.forEach(bind); };
+    }).catch(() => { /* MIDI no disponible en este navegador/dispositivo */ });
+  }
+
+  // ================= MIDI LEARN =================
+  // Estados: 'idle' (reposo) -> 'picking' (parpadeando, esperando que toques un
+  // elemento de la interfaz) -> 'waitingMidi' (parpadeando, esperando la señal
+  // MIDI/USB externa) -> vuelve a 'idle' (botón verde momentáneo = éxito).
+  const learnBtn = document.getElementById('learnBtn');
+  const downloadBankBtn = document.getElementById('downloadBankBtn');
+  const midiLearnMap = {}; // 'note:60' | 'cc:74' | 'pb' -> { el, kind, lastVal }
+  let learnState = 'idle';
+  let learnTargetEl = null;
+  let learnClickSwallowTimer = null;
+
+  function midiMapKey(cmd, d1){
+    if(cmd === 0x90 || cmd === 0x80) return 'note:'+d1;
+    if(cmd === 0xE0) return 'pb';
+    if(cmd === 0xB0) return 'cc:'+d1;
+    return 'x'+cmd.toString(16)+':'+d1;
+  }
+
+  function classifyLearnTarget(el){
+    if(el.classList.contains('knob-outer')) return 'knob';
+    if(el.tagName === 'INPUT' && el.type === 'range') return 'range';
+    if(el.classList.contains('white-key') || el.classList.contains('black-key')) return 'key';
+    return 'button';
+  }
+
+  // Cualquier control de la interfaz es mapeable, EXCEPTO el botón de descarga
+  // del banco de sonidos y el propio botón LEARN.
+  function findLearnableTarget(rawEl){
+    const found = rawEl.closest('button, .knob-outer, .white-key, .black-key, input[type="range"]');
+    if(!found) return null;
+    if(found === learnBtn || found === downloadBankBtn) return null;
+    return found;
+  }
+
+  function onPickPointerDown(e){
+    if(learnState !== 'picking') return;
+    if(learnBtn.contains(e.target)) return;
+    const target = findLearnableTarget(e.target);
+    if(!target) return;
+    e.preventDefault();
+    e.stopPropagation();
+    selectLearnTarget(target);
+  }
+
+  function onPickClickSwallow(e){
+    // Evita que, al tocar un elemento para seleccionarlo, ese mismo toque
+    // dispare además su acción normal (abrir un desplegable, sonar una tecla, etc).
+    if(learnBtn.contains(e.target)) return;
+    if(learnState === 'picking'){
+      const target = findLearnableTarget(e.target);
+      if(target){ e.preventDefault(); e.stopPropagation(); selectLearnTarget(target); }
+    } else if(learnState === 'waitingMidi' && e.target === learnTargetEl){
+      e.preventDefault(); e.stopPropagation();
+    }
+  }
+
+  function selectLearnTarget(target){
+    learnTargetEl = target;
+    learnState = 'waitingMidi';
+    document.body.classList.remove('learn-picking');
+    target.classList.add('learn-target-selected');
+    document.removeEventListener('mousedown', onPickPointerDown, true);
+    document.removeEventListener('touchstart', onPickPointerDown, true);
+    clearTimeout(learnClickSwallowTimer);
+    learnClickSwallowTimer = setTimeout(() => {
+      document.removeEventListener('click', onPickClickSwallow, true);
+    }, 400);
+  }
+
+  function startLearn(){
+    learnState = 'picking';
+    learnTargetEl = null;
+    learnBtn.classList.remove('success');
+    learnBtn.classList.add('waiting');
+    document.body.classList.add('learn-picking');
+    document.addEventListener('mousedown', onPickPointerDown, true);
+    document.addEventListener('touchstart', onPickPointerDown, true);
+    document.addEventListener('click', onPickClickSwallow, true);
+  }
+
+  function cancelLearn(){
+    learnState = 'idle';
+    if(learnTargetEl) learnTargetEl.classList.remove('learn-target-selected');
+    learnTargetEl = null;
+    learnBtn.classList.remove('waiting', 'success');
+    document.body.classList.remove('learn-picking');
+    clearTimeout(learnClickSwallowTimer);
+    document.removeEventListener('mousedown', onPickPointerDown, true);
+    document.removeEventListener('touchstart', onPickPointerDown, true);
+    document.removeEventListener('click', onPickClickSwallow, true);
+  }
+
+  function completeLearn(cmd, d1){
+    if(!learnTargetEl){ cancelLearn(); return; }
+    const key = midiMapKey(cmd, d1);
+    const kind = classifyLearnTarget(learnTargetEl);
+    midiLearnMap[key] = { el: learnTargetEl, kind, lastVal: undefined };
+    learnTargetEl.classList.remove('learn-target-selected');
+    learnState = 'idle';
+    learnTargetEl = null;
+    clearTimeout(learnClickSwallowTimer);
+    document.removeEventListener('click', onPickClickSwallow, true);
+    learnBtn.classList.remove('waiting');
+    learnBtn.classList.add('success');
+    setTimeout(() => { learnBtn.classList.remove('success'); }, 1500);
+  }
+
+  learnBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if(learnState === 'idle') startLearn();
+    else cancelLearn();
+  });
+
+  function applyLearnedMapping(cmd, d1, d2){
+    const mapping = midiLearnMap[midiMapKey(cmd, d1)];
+    if(!mapping) return;
+    const { el, kind } = mapping;
+    if(!el || !document.body.contains(el)) return;
+    if(kind === 'knob'){
+      const inst = knobRegistry[el.id];
+      if(inst) inst.setVal(inst.min + (d2/127)*(inst.max-inst.min));
+    } else if(kind === 'range'){
+      const min = parseFloat(el.min) || 0, max = parseFloat(el.max) || 100;
+      el.value = Math.round(min + (d2/127)*(max-min));
+      el.dispatchEvent(new Event('input', { bubbles:true }));
+    } else if(kind === 'key'){
+      if(cmd === 0x90 && d2 > 0) el.dispatchEvent(new MouseEvent('mousedown', { bubbles:true }));
+      else if(cmd === 0x80 || (cmd === 0x90 && d2 === 0)) el.dispatchEvent(new MouseEvent('mouseup', { bubbles:true }));
+    } else { // button
+      let trigger = false;
+      if(cmd === 0x90 && d2 > 0){
+        trigger = true;
+      } else if(cmd === 0xB0){
+        const wasHigh = mapping.lastVal !== undefined && mapping.lastVal > 63;
+        const isHigh = d2 > 63;
+        if(isHigh && !wasHigh) trigger = true;
+        mapping.lastVal = d2;
+      }
+      if(trigger) el.click();
+    }
+  }
+
+  // ================= CONECTIVIDAD / MODO OFFLINE =================
+  // engineState sigue rigiendo internamente qué motor usar (muestra real vs.
+  // síntesis fail-safe) aunque ya no se imprime como texto en la pantalla.
+  function updateConnDisplay(){ /* estado interno; sin salida visible en pantalla */ }
+
+  // ---- Banco SF2 real: descarga cache-first de un solo archivo ----
+  // Fuente: GeneralUser GS (mrbumpy409/GeneralUser-GS, GitHub), SF2 estándar de
+  // 16-bit, ~30.8MB, los 128 instrumentos General MIDI en un único archivo.
+  const downloadBtn = document.getElementById('downloadBankBtn');
+  const offlineStatus = document.getElementById('offlineStatus');
+
+  downloadBtn.addEventListener('click', async () => {
+    if(!audioCtx) initAudio();
+    downloadBtn.disabled = true;
+    offlineStatus.textContent = 'Descargando banco SF2 (GeneralUser GS, ~31MB, 128 instrumentos reales)…';
+    try{
+      if(!window.SF73_SF2) throw new Error('motor SF2 no disponible en este navegador');
+      await window.SF73_SF2.init(audioCtx, sharedSF2Filter);
+      if(sf2Ready()){
+        window.SF73_SF2.programChange(currentInstrumentIndex);
+        engineState = 'cached';
+        offlineStatus.textContent = 'Banco SF2 cargado y cacheado localmente: 128 instrumentos con muestras reales de 16-bit, disponible offline de ahora en más.';
+      } else {
+        engineState = 'synth';
+        offlineStatus.textContent = 'No se pudo cargar el banco SF2 (' + (window.SF73_SF2.error ? window.SF73_SF2.error.message : 'motor no disponible') + '). El módulo sigue sonando con el sintetizador nativo fail-safe.';
+      }
+    }catch(err){
+      offlineStatus.textContent = 'Error: ' + err.message + '. El módulo sigue funcionando con el sintetizador nativo fail-safe.';
+    }finally{
+      downloadBtn.disabled = false;
+      updateConnDisplay();
+    }
+  });
+
+  // ---- Service Worker (best effort) ----
+  // El SW real implementa Cache First interceptando fetch(); igual, dentro del
+  // sandbox de un Artifact (sin origen http(s) propio) el navegador normalmente
+  // BLOQUEA el registro de Service Workers. Por eso el cache-first "real" que
+  // efectivamente funciona en este entorno es el implementado en window.SF73_SF2
+  // directamente con Cache Storage API. Este bloque intenta además el registro
+  // estándar de SW por si el documento se sirve desde un origen http(s) real.
+  if('serviceWorker' in navigator){
+    try{
+      const swCode = `
+        const CACHE_NAME = 'sf73-sf2-bank-v1';
+        self.addEventListener('install', e => self.skipWaiting());
+        self.addEventListener('activate', e => self.clients.claim());
+        self.addEventListener('fetch', e => {
+          e.respondWith(
+            caches.open(CACHE_NAME).then(cache =>
+              cache.match(e.request).then(cached => {
+                if(cached) return cached; // Cache First: si existe, nunca se consulta la red
+                return fetch(e.request).then(resp => { cache.put(e.request, resp.clone()); return resp; })
+                  .catch(() => cached);
+              })
+            )
+          );
+        });
+      `;
+      const blob = new Blob([swCode], {type:'text/javascript'});
+      const swUrl = URL.createObjectURL(blob);
+      navigator.serviceWorker.register(swUrl).catch(() => {
+        // Esperable en el sandbox del Artifact: no hay origen http(s) propio
+        // para registrar el SW. No afecta al motor: el cache-first vía
+        // window.SF73_SF2 (Cache Storage API) ya cumple la misma función.
+      });
+    }catch(e){ /* entorno sin soporte de SW, se ignora */ }
+  }
+
+  // ================= UI: DISPLAY =================
+  const dispPreset = document.getElementById('dispPreset');
+  const dispVol = document.getElementById('dispVol');
+  const dispBass = document.getElementById('dispBass');
+  const dispTreble = document.getElementById('dispTreble');
+  const dispReverb = document.getElementById('dispReverb');
+  const dispChorus = document.getElementById('dispChorus');
+  const dispDelay = document.getElementById('dispDelay');
+  const dispCutoff = document.getElementById('dispCutoff');
+  const dispResonance = document.getElementById('dispResonance');
+  const dispEnvMod = document.getElementById('dispEnvMod');
+  const dispDecay = document.getElementById('dispDecay');
+
+  let bassVal=0, trebleVal=0, reverbVal=0, chorusVal=0, delayMixVal=0;
+  let cutoffPct=70, resonancePct=10, envModPct=0, decayPct=25;
+
+  function updateDisplay(){
+    dispPreset.textContent = GM_INSTRUMENTS[currentInstrumentIndex];
+    dispVol.textContent = volSlider.value + "%";
+    dispBass.textContent = (bassVal>=0?"+":"") + bassVal + "dB";
+    dispTreble.textContent = (trebleVal>=0?"+":"") + trebleVal + "dB";
+    dispReverb.textContent = reverbVal>0 ? reverbVal+"%" : "OFF";
+    dispChorus.textContent = chorusVal>0 ? chorusVal+"%" : "OFF";
+    dispDelay.textContent = delayMixVal>0 ? delayMixVal+"%" : "OFF";
+    dispCutoff.textContent = cutoffPct + "%";
+    dispResonance.textContent = resonancePct + "%";
+    dispEnvMod.textContent = envModPct + "%";
+    dispDecay.textContent = decayPct + "%";
+  }
+
+  // ================= INSTRUMENT SELECTOR + STEPPER =================
+  const instrumentBtn = document.getElementById('instrumentBtn');
+  const instrumentCur = document.getElementById('instrumentCur');
+  const instrumentDropdown = document.getElementById('instrumentDropdown');
+
+  GM_INSTRUMENTS.forEach((label, idx) => {
+    const item = document.createElement('div');
+    item.className = 'instrument-item';
+    if(idx === 0) item.classList.add('selected');
+    item.textContent = label;
+    item.addEventListener('click', () => selectInstrument(idx, true));
+    instrumentDropdown.appendChild(item);
+  });
+
+  function selectInstrument(idx, closeAfter){
+    currentInstrumentIndex = ((idx % GM_INSTRUMENTS.length) + GM_INSTRUMENTS.length) % GM_INSTRUMENTS.length;
+    currentPatch = getPatch(currentInstrumentIndex);
+    const label = GM_INSTRUMENTS[currentInstrumentIndex];
+    instrumentCur.textContent = label;
+    document.querySelectorAll('.instrument-item').forEach((el,i) => el.classList.toggle('selected', i===currentInstrumentIndex));
+    updateDisplay();
+
+    // Program Change real en el motor SF2 (índice GM = número de programa MIDI 0-127)
+    if(sf2Ready()){
+      window.SF73_SF2.programChange(currentInstrumentIndex);
+      engineState = 'cached';
+    } else {
+      engineState = 'synth';
+    }
+    updateConnDisplay();
+
+    if(closeAfter) closeDropdown();
+  }
+
+  function openDropdown(){ instrumentDropdown.classList.add('show'); instrumentBtn.classList.add('open'); }
+  function closeDropdown(){ instrumentDropdown.classList.remove('show'); instrumentBtn.classList.remove('open'); }
+  instrumentBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if(instrumentDropdown.classList.contains('show')) closeDropdown(); else openDropdown();
+  });
+  document.addEventListener('click', (e) => {
+    if(!instrumentDropdown.contains(e.target) && e.target !== instrumentBtn) closeDropdown();
+  });
+
+  document.getElementById('stepperPlus').addEventListener('click', () => { if(!audioCtx) initAudio(); selectInstrument(currentInstrumentIndex+1, false); });
+  document.getElementById('stepperMinus').addEventListener('click', () => { if(!audioCtx) initAudio(); selectInstrument(currentInstrumentIndex-1, false); });
+
+  // ================= METERS =================
+  function buildMeter(container, segments){
+    container.innerHTML = "";
+    for(let i=0;i<segments;i++){ const seg=document.createElement('div'); seg.className='meter-seg'; container.appendChild(seg); }
+  }
+  function setMeter(container, percent, segments){
+    const lit = Math.round((percent/100)*segments);
+    container.querySelectorAll('.meter-seg').forEach((seg,i) => {
+      seg.classList.remove('lit-low','lit-mid','lit-high');
+      if(i<lit){
+        if(i<segments*0.6) seg.classList.add('lit-low');
+        else if(i<segments*0.85) seg.classList.add('lit-mid');
+        else seg.classList.add('lit-high');
+      }
+    });
+  }
+  const METER_SEGS = 10;
+  const TINY_METER_SEGS = 6;
+  const meterReverbEl = document.getElementById('meterReverb');
+  const meterChorusEl = document.getElementById('meterChorus');
+  const meterDelayEl = document.getElementById('meterDelay');
+  const meterVolumeEl = document.getElementById('meterVolume');
+  const meterBassEl = document.getElementById('meterBass');
+  const meterTrebleEl = document.getElementById('meterTreble');
+  const meterCutoffEl = document.getElementById('meterCutoff');
+  const meterResonanceEl = document.getElementById('meterResonance');
+  const meterEnvModEl = document.getElementById('meterEnvMod');
+  const meterDecayEl = document.getElementById('meterDecay');
+  buildMeter(meterReverbEl, METER_SEGS);
+  buildMeter(meterChorusEl, METER_SEGS);
+  buildMeter(meterDelayEl, METER_SEGS);
+  buildMeter(meterVolumeEl, METER_SEGS);
+  buildMeter(meterBassEl, METER_SEGS);
+  buildMeter(meterTrebleEl, METER_SEGS);
+  buildMeter(meterCutoffEl, TINY_METER_SEGS);
+  buildMeter(meterResonanceEl, TINY_METER_SEGS);
+  buildMeter(meterEnvModEl, TINY_METER_SEGS);
+  buildMeter(meterDecayEl, TINY_METER_SEGS);
+  setMeter(meterVolumeEl, 80, METER_SEGS);
+  setMeter(meterBassEl, 50, METER_SEGS);
+  setMeter(meterTrebleEl, 50, METER_SEGS);
+
+  // ================= VOLUME =================
+  const volSlider = document.getElementById('volSlider');
+  const volLabel = document.getElementById('volLabel');
+  volSlider.addEventListener('input', () => {
+    volLabel.textContent = volSlider.value + "%";
+    if(masterGain) masterGain.gain.value = parseFloat(volSlider.value)/100;
+    setMeter(meterVolumeEl, parseFloat(volSlider.value), METER_SEGS);
+    updateDisplay();
+  });
+
+  // ================= GENERIC KNOB =================
+  const knobRegistry = {}; // id del knob -> { setVal, getVal, min, max } (usado por MIDI LEARN)
+  function setupKnob(knobEl, indicatorEl, valueEl, opts){
+    let val = opts.initial;
+    const min = opts.min, max = opts.max;
+    function render(){
+      const pct = (val - min) / (max - min);
+      const angle = -135 + pct*270;
+      indicatorEl.style.transform = `translateX(-50%) rotate(${angle}deg)`;
+      valueEl.textContent = opts.format ? opts.format(val) : (val + opts.unit);
+      opts.onChange(val);
+    }
+    function setVal(newVal){ val = Math.min(max, Math.max(min, Math.round(newVal))); render(); }
+    let dragging=false, startY=0, startVal=0;
+    function pointerDown(e){ dragging=true; startY=(e.touches?e.touches[0].clientY:e.clientY); startVal=val; e.preventDefault(); }
+    function pointerMove(e){
+      if(!dragging) return;
+      const y=(e.touches?e.touches[0].clientY:e.clientY);
+      const dy = startY - y;
+      setVal(startVal + (dy/150)*(max-min));
+    }
+    function pointerUp(){ dragging=false; }
+    knobEl.addEventListener('mousedown', pointerDown);
+    knobEl.addEventListener('touchstart', pointerDown, {passive:false});
+    window.addEventListener('mousemove', pointerMove);
+    window.addEventListener('touchmove', pointerMove, {passive:false});
+    window.addEventListener('mouseup', pointerUp);
+    window.addEventListener('touchend', pointerUp);
+    render();
+    const api = { setVal, getVal: () => val, min, max };
+    if(knobEl.id) knobRegistry[knobEl.id] = api;
+    return api;
+  }
+
+  setupKnob(document.getElementById('knobBass'), document.getElementById('indBass'), document.getElementById('valBass'),
+    { min:-15, max:15, initial:0, format: v => (v>=0?"+":"")+v+" dB",
+      onChange: v => { bassVal=v; if(bassFilter) bassFilter.gain.value=v; setMeter(meterBassEl, ((v+15)/30)*100, METER_SEGS); updateDisplay(); } });
+
+  setupKnob(document.getElementById('knobTreble'), document.getElementById('indTreble'), document.getElementById('valTreble'),
+    { min:-15, max:15, initial:0, format: v => (v>=0?"+":"")+v+" dB",
+      onChange: v => { trebleVal=v; if(trebleFilter) trebleFilter.gain.value=v; setMeter(meterTrebleEl, ((v+15)/30)*100, METER_SEGS); updateDisplay(); } });
+
+  setupKnob(document.getElementById('knobCutoff'), document.getElementById('indCutoff'), document.getElementById('valCutoff'),
+    { min:0, max:100, initial:70, format: v => v+"%",
+      onChange: v => {
+        cutoffPct=v; filterCutoffHz = 200*Math.pow(8000/200, v/100);
+        if(sharedSF2Filter) sharedSF2Filter.frequency.setTargetAtTime(filterCutoffHz, audioCtx.currentTime, 0.02);
+        setMeter(meterCutoffEl, v, TINY_METER_SEGS); updateDisplay();
+      } });
+
+  setupKnob(document.getElementById('knobResonance'), document.getElementById('indResonance'), document.getElementById('valResonance'),
+    { min:0, max:100, initial:10, format: v => v+"%",
+      onChange: v => {
+        resonancePct=v; filterResonanceQ = 0.1 + (v/100)*17.9;
+        if(sharedSF2Filter) sharedSF2Filter.Q.setTargetAtTime(filterResonanceQ, audioCtx.currentTime, 0.02);
+        setMeter(meterResonanceEl, v, TINY_METER_SEGS); updateDisplay();
+      } });
+
+  setupKnob(document.getElementById('knobEnvMod'), document.getElementById('indEnvMod'), document.getElementById('valEnvMod'),
+    { min:0, max:100, initial:0, format: v => v+"%",
+      onChange: v => { envModPct=v; filterEnvModAmount = (v/100)*6000; setMeter(meterEnvModEl, v, TINY_METER_SEGS); updateDisplay(); } });
+
+  setupKnob(document.getElementById('knobDecay'), document.getElementById('indDecay'), document.getElementById('valDecay'),
+    { min:0, max:100, initial:25, format: v => v+"%",
+      onChange: v => { decayPct=v; filterDecaySeconds = 0.05 + (v/100)*2.45; setMeter(meterDecayEl, v, TINY_METER_SEGS); updateDisplay(); } });
+
+  // ================= REVERB =================
+  const reverbOnOffBtn = document.getElementById('reverbOnOff');
+  function clearReverbPresets(){ document.querySelectorAll('.preset-btn[data-effect="reverb"]').forEach(b=>b.classList.remove('active')); }
+  const reverbKnob = setupKnob(document.getElementById('knobReverb'), document.getElementById('indReverb'), document.getElementById('valReverb'),
+    { min:0, max:100, initial:0, format: v => v+"%",
+      onChange: v => {
+        reverbVal = v;
+        if(reverbWetGain && reverbDryGain){ const wet=v/100; reverbWetGain.gain.value=wet*0.9; reverbDryGain.gain.value=1-wet*0.5; }
+        setMeter(meterReverbEl, v, METER_SEGS);
+        reverbOnOffBtn.classList.toggle('active', v>0);
+        updateDisplay();
+      } });
+  reverbOnOffBtn.addEventListener('click', () => {
+    if(!audioCtx) initAudio();
+    const isOn = reverbOnOffBtn.classList.contains('active');
+    clearReverbPresets();
+    reverbKnob.setVal(isOn ? 0 : 50);
+  });
+
+  // ================= CHORUS =================
+  const chorusOnOffBtn = document.getElementById('chorusOnOff');
+  function clearChorusPresets(){ document.querySelectorAll('.preset-btn[data-effect="chorus"]').forEach(b=>b.classList.remove('active')); }
+  const chorusKnob = setupKnob(document.getElementById('knobChorus'), document.getElementById('indChorus'), document.getElementById('valChorus'),
+    { min:0, max:100, initial:0, format: v => v+"%",
+      onChange: v => {
+        chorusVal = v;
+        if(chorusWetGain && chorusDryGain && chorusLFOGain){ const wet=v/100; chorusWetGain.gain.value=wet*0.8; chorusDryGain.gain.value=1-wet*0.3; chorusLFOGain.gain.value=0.002+wet*0.006; }
+        setMeter(meterChorusEl, v, METER_SEGS);
+        chorusOnOffBtn.classList.toggle('active', v>0);
+        updateDisplay();
+      } });
+  chorusOnOffBtn.addEventListener('click', () => {
+    if(!audioCtx) initAudio();
+    const isOn = chorusOnOffBtn.classList.contains('active');
+    clearChorusPresets();
+    chorusKnob.setVal(isOn ? 0 : 50);
+  });
+
+  // ================= DELAY =================
+  const delayOnOffBtn = document.getElementById('delayOnOff');
+  function clearDelayPresets(){ document.querySelectorAll('.preset-btn[data-effect="delay"]').forEach(b=>b.classList.remove('active')); }
+
+  const delayTimeKnob = setupKnob(document.getElementById('knobDelayTime'), document.getElementById('indDelayTime'), document.getElementById('valDelayTime'),
+    { min:0, max:100, initial:30, format: v => v+"%",
+      onChange: v => { if(delayNode) delayNode.delayTime.value = 0.02 + (v/100)*0.78; } });
+
+  const delayFeedbackKnob = setupKnob(document.getElementById('knobDelayFeedback'), document.getElementById('indDelayFeedback'), document.getElementById('valDelayFeedback'),
+    { min:0, max:100, initial:30, format: v => v+"%",
+      onChange: v => { if(delayFeedbackGain) delayFeedbackGain.gain.value = (v/100)*0.85; } });
+
+  const delayMixKnob = setupKnob(document.getElementById('knobDelayMix'), document.getElementById('indDelayMix'), document.getElementById('valDelayMix'),
+    { min:0, max:100, initial:0, format: v => v+"%",
+      onChange: v => {
+        delayMixVal = v;
+        if(delayWetGain && delayDryGain){ const wet=v/100; delayWetGain.gain.value=wet*0.85; delayDryGain.gain.value=1-wet*0.4; }
+        setMeter(meterDelayEl, v, METER_SEGS);
+        delayOnOffBtn.classList.toggle('active', v>0);
+        updateDisplay();
+      } });
+
+  delayOnOffBtn.addEventListener('click', () => {
+    if(!audioCtx) initAudio();
+    const isOn = delayOnOffBtn.classList.contains('active');
+    clearDelayPresets();
+    delayMixKnob.setVal(isOn ? 0 : 50);
+  });
+
+  // ================= PRESET BUTTONS (reverb/chorus/delay) =================
+  document.querySelectorAll('.preset-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if(!audioCtx) initAudio();
+      const effect = btn.dataset.effect;
+      if(effect === 'reverb'){
+        clearReverbPresets(); reverbKnob.setVal(parseInt(btn.dataset.value,10)); btn.classList.add('active');
+      } else if(effect === 'chorus'){
+        clearChorusPresets(); chorusKnob.setVal(parseInt(btn.dataset.value,10)); btn.classList.add('active');
+      } else if(effect === 'delay'){
+        clearDelayPresets();
+        delayTimeKnob.setVal(parseInt(btn.dataset.time,10));
+        delayFeedbackKnob.setVal(parseInt(btn.dataset.fb,10));
+        delayMixKnob.setVal(parseInt(btn.dataset.mix,10));
+        btn.classList.add('active');
+      }
+    });
+  });
+
+  // ================= KEYBOARD (2 octavas: C4 a C6) =================
+  const keyboardEl = document.getElementById('keyboard');
+  const NOTE_LETTERS = [
+    {letter:'C', offset:0}, {letter:'D', offset:2}, {letter:'E', offset:4},
+    {letter:'F', offset:5}, {letter:'G', offset:7}, {letter:'A', offset:9}, {letter:'B', offset:11}
+  ];
+  const SHARP_AFTER = ['C','D',null,'F','G','A',null]; // sostenido después de C,D,F,G,A (no después de E ni B)
+
+  const whiteNotes = [];
+  const blackNotes = [];
+  [4,5].forEach(octave => {
+    NOTE_LETTERS.forEach((n, i) => {
+      const name = n.letter + octave;
+      const semitone = 12*(octave-4) + n.offset - 9; // relativo a A4
+      whiteNotes.push({ name, semitone });
+      if(SHARP_AFTER[i]){
+        blackNotes.push({ name: n.letter + '#' + octave, semitone: semitone+1, afterIndex: whiteNotes.length-1 });
+      }
+    });
+  });
+  whiteNotes.push({ name:'C6', semitone: 12*(6-4)+0-9 }); // última tecla, cierre de la 2da octava
+
+  const keyElemsByNote = {};
+  whiteNotes.forEach((n) => {
+    const el = document.createElement('div');
+    el.className = 'white-key'; el.textContent = n.name;
+    keyboardEl.appendChild(el); keyElemsByNote[n.name] = el;
+    midiKeyElemsByNumber[69 + n.semitone] = el;
+    bindKey(el, n.name, n.semitone);
+  });
+  const whiteCount = whiteNotes.length;
+  blackNotes.forEach(n => {
+    const el = document.createElement('div');
+    el.className = 'black-key';
+    const leftPct = ((n.afterIndex+1)/whiteCount)*100 - (100/whiteCount)*0.35;
+    el.style.left = leftPct + "%";
+    keyboardEl.appendChild(el); keyElemsByNote[n.name] = el;
+    midiKeyElemsByNumber[69 + n.semitone] = el;
+    bindKey(el, n.name, n.semitone);
+  });
+  function bindKey(el, name, semitone){
+    function press(e){ e.preventDefault(); el.classList.add('active'); startNote(name, semitone); }
+    function release(){ el.classList.remove('active'); stopNote(name); }
+    el.addEventListener('mousedown', press);
+    el.addEventListener('mouseup', release);
+    el.addEventListener('mouseleave', release);
+    el.addEventListener('touchstart', press, {passive:false});
+    el.addEventListener('touchend', release);
+    el.addEventListener('touchcancel', release);
+  }
+  const keyMap = { 'a':'C4','w':'C#4','s':'D4','e':'D#4','d':'E4','f':'F4','t':'F#4','g':'G4','y':'G#4','h':'A4','u':'A#4','j':'B4','k':'C5' };
+  const noteSemitones = {};
+  whiteNotes.concat(blackNotes).forEach(n => noteSemitones[n.name] = n.semitone);
+  const pressedComputerKeys = new Set();
+  window.addEventListener('keydown', (e) => {
+    const note = keyMap[e.key.toLowerCase()];
+    if(note && !pressedComputerKeys.has(e.key)){
+      pressedComputerKeys.add(e.key);
+      const el = keyElemsByNote[note]; if(el) el.classList.add('active');
+      startNote(note, noteSemitones[note]);
+    }
+  });
+  window.addEventListener('keyup', (e) => {
+    const note = keyMap[e.key.toLowerCase()];
+    if(note){
+      pressedComputerKeys.delete(e.key);
+      const el = keyElemsByNote[note]; if(el) el.classList.remove('active');
+      stopNote(note);
+    }
+  });
+
+  // ================= PREVIEW =================
+  const previewBtn = document.getElementById('previewBtn');
+  previewBtn.addEventListener('click', () => {
+    if(!audioCtx) initAudio();
+    previewBtn.classList.add('playing');
+    const c4El = keyElemsByNote['C4']; if(c4El) c4El.classList.add('active');
+    startNote('preview-do', noteSemitones['C4']);
+    setTimeout(() => {
+      stopNote('preview-do');
+      previewBtn.classList.remove('playing');
+      if(c4El) c4El.classList.remove('active');
+    }, 550);
+  });
+
+  updateDisplay();
+
+})();
+</script>
+
+</body>
+</html>
