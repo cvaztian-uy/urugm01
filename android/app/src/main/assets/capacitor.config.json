@@ -1,0 +1,11 @@
+{
+	"appId": "com.uru.gm01",
+	"appName": "URUGM01",
+	"webDir": "www",
+	"server": {
+		"androidScheme": "https"
+	},
+	"android": {
+		"allowMixedContent": false
+	}
+}
